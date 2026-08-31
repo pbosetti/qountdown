@@ -143,3 +143,8 @@ Reveal.on('qountdown-state', (e) => console.log(e.state, e.elapsed, e.total));
 ```bash
 quarto render example.qmd
 ```
+
+
+# Author
+
+Paolo Bosetti, University of Trento
