@@ -70,7 +70,7 @@ All options live under `format: revealjs: qountdown:`.
 | `warning-at` | `0.8` | Fraction of the allocated time at which the warning colour kicks in. |
 | `label` | `false` | `true` shows the remaining time, `elapsed` shows the elapsed time instead. |
 | `label-position` | `bl` | Corner for the clock: `bl`, `br`, `tr`, `tl` (`bottom-left` and friends also work). |
-| `keys` | `{toggle: t, reset: T}` | Keyboard shortcuts, see below. Use `keys: false` to disable them. |
+| `keys` | `{toggle: t, reset: T, set: M}` | Keyboard shortcuts, see below. Use `keys: false` to disable them. |
 
 A fuller example:
 
@@ -86,6 +86,7 @@ format:
       keys:
         toggle: p
         reset: P
+        set: D
 revealjs-plugins:
   - qountdown
 ```
@@ -96,10 +97,24 @@ revealjs-plugins:
 |---|---|
 | `t` | Pause / resume the clock |
 | `T` (shift + `t`) | Reset the clock to zero |
+| `M` (shift + `m`) | Set a new duration: type the minutes, then `Enter` |
 
 These do not interfere with RevealJS navigation, and are ignored while you are
 typing in an input field. Change them with the `keys` option if they clash with
 another extension (the `pointer` extension, for instance, uses `q` by default).
+
+### Changing the duration during the talk
+
+Slots move. Press `M` and a small box appears above the bars, in the spirit of
+the RevealJS jump-to-slide box: type the new duration in whole minutes and
+press `Enter`. `Esc`, or clicking away, cancels; the current allocation is shown
+as a hint in the box while it is empty.
+
+The elapsed time is left untouched, so the bar simply redraws against the new
+allocation - if you are 10 minutes into a talk that just grew from 20 to 30
+minutes, the bar drops back from two thirds to one third. The new duration
+survives `T` and going in and out of full screen; reloading the deck goes back
+to the value in the YAML.
 
 ## Scripting
 
@@ -113,6 +128,7 @@ window.Qountdown.toggle();
 window.Qountdown.reset();      // back to zero, keeps running if it was running
 window.Qountdown.stop();       // back to zero and idle
 window.Qountdown.setMinutes(25);
+window.Qountdown.promptMinutes(); // open the type-in box, as `M` does
 window.Qountdown.getState();   // {state, elapsed, total} - times in ms
 
 Reveal.on('qountdown-overtime', (e) => console.log('time is up', e.elapsed));

@@ -32,6 +32,8 @@ back to zero when you leave full screen.
 
 Press `t` to pause or resume, `T` to reset.
 
+Press `M` to type a new duration in minutes, then `Enter`.
+
 ## Configuration
 
 ```yaml

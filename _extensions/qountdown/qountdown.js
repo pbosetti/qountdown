@@ -23,7 +23,7 @@ window.RevealQountdown = function () {
     onExit: 'reset',         // on leaving fullscreen: 'reset' | 'pause' | 'continue'
     label: false,            // true | 'remaining' | 'elapsed'
     labelPosition: 'bl',     // 'bl' | 'br' | 'tr' | 'tl'
-    keys: { toggle: 't', reset: 'T' }
+    keys: { toggle: 't', reset: 'T', set: 'M' }
   };
 
   function camelize(key) {
@@ -122,8 +122,30 @@ window.RevealQountdown = function () {
         label.style.setProperty('--qountdown-overtime-color', cfg.overtimeColor);
       }
 
+      // Type-in duration, in the spirit of the RevealJS jump-to-slide box.
+      var prompt = null;
+      var promptInput = null;
+      if (cfg.keys.set) {
+        prompt = document.createElement('div');
+        prompt.className = 'qountdown-prompt';
+        prompt.style.setProperty('--qountdown-color', cfg.color);
+
+        promptInput = document.createElement('input');
+        promptInput.type = 'text';
+        promptInput.inputMode = 'numeric';
+        promptInput.autocomplete = 'off';
+        promptInput.setAttribute('aria-label', 'Minutes');
+        prompt.appendChild(promptInput);
+
+        var unit = document.createElement('span');
+        unit.className = 'qountdown-prompt-unit';
+        unit.textContent = 'min';
+        prompt.appendChild(unit);
+      }
+
       reveal.appendChild(el);
       if (label) reveal.appendChild(label);
+      if (prompt) reveal.appendChild(prompt);
 
       // --- geometry -------------------------------------------------------
       var LABEL_INSET = 12; // px from the edge of the deck
@@ -167,6 +189,8 @@ window.RevealQountdown = function () {
           el.style.bottom = progressHeight + 'px';
           if (progress) progress.style.bottom = '';
         }
+
+        if (prompt) prompt.style.bottom = (height + progressHeight + 6) + 'px';
 
         if (!label) return;
 
@@ -280,11 +304,60 @@ window.RevealQountdown = function () {
           total = minutesToMs(minutes);
           overtimeAnnounced = elapsed() >= total;
           render();
+          announce();
+        },
+        // Open the type-in box; the elapsed time is left alone.
+        promptMinutes: function () {
+          openPrompt();
         },
         getState: function () {
           return { state: state, elapsed: elapsed(), total: total };
         }
       };
+
+      // --- duration prompt ------------------------------------------------
+      function openPrompt() {
+        if (!prompt) return;
+        promptInput.value = '';
+        // The current allocation, as a hint of what is being replaced.
+        promptInput.placeholder = String(Math.round(total / 600) / 100);
+        prompt.classList.add('is-open');
+        layout();
+        promptInput.focus();
+      }
+
+      // Closing is also what `blur` does, hence the guard: `promptInput.blur()`
+      // below comes straight back here.
+      function closePrompt(apply) {
+        if (!prompt || !prompt.classList.contains('is-open')) return;
+        var minutes = parseInt(promptInput.value, 10);
+        prompt.classList.remove('is-open');
+        promptInput.blur();
+        if (apply && isFinite(minutes) && minutes > 0) api.setMinutes(minutes);
+      }
+
+      if (prompt) {
+        promptInput.addEventListener('input', function () {
+          var digits = promptInput.value.replace(/[^0-9]/g, '').slice(0, 4);
+          if (digits !== promptInput.value) promptInput.value = digits;
+        });
+
+        // The focused input already keeps RevealJS off these keystrokes;
+        // stopping them here keeps other plugins out of the way too.
+        promptInput.addEventListener('keydown', function (event) {
+          event.stopPropagation();
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            closePrompt(true);
+          } else if (event.key === 'Escape' || event.key === 'Esc') {
+            event.preventDefault();
+            closePrompt(false);
+          }
+        });
+
+        // Clicking away is a cancel.
+        promptInput.addEventListener('blur', function () { closePrompt(false); });
+      }
 
       // --- triggers -------------------------------------------------------
       var sawFullscreenApi = false;
@@ -333,7 +406,7 @@ window.RevealQountdown = function () {
         if (wasFullscreen && cfg.start === 'fullscreen') api.start();
       }
 
-      if (cfg.keys.toggle || cfg.keys.reset) {
+      if (cfg.keys.toggle || cfg.keys.reset || cfg.keys.set) {
         document.addEventListener('keydown', function (event) {
           if (event.ctrlKey || event.metaKey || event.altKey) return;
           var target = event.target;
@@ -346,6 +419,9 @@ window.RevealQountdown = function () {
           } else if (cfg.keys.reset && event.key === cfg.keys.reset) {
             event.preventDefault();
             api.reset();
+          } else if (cfg.keys.set && event.key === cfg.keys.set) {
+            event.preventDefault();
+            openPrompt();
           }
         });
       }

@@ -61,7 +61,57 @@
   opacity: 1;
 }
 
+/* Duration prompt: press `M`, type the minutes, Enter. Hidden until then. */
+.reveal .qountdown-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: none;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-family: var(--r-main-font, sans-serif);
+  font-size: 22px;
+  line-height: 1.4;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.reveal .qountdown-prompt.is-open {
+  display: flex;
+}
+
+.reveal .qountdown-prompt input {
+  width: 3em;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-bottom: 1px solid var(--qountdown-color, #f0a202);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  outline: none;
+  box-shadow: none;
+}
+
+.reveal .qountdown-prompt input::placeholder {
+  color: currentColor;
+  opacity: 0.35;
+}
+
+.reveal .qountdown-prompt-unit {
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+
 @media print {
   .reveal .qountdown,
-  .reveal .qountdown-label { display: none; }
+  .reveal .qountdown-label,
+  .reveal .qountdown-prompt { display: none; }
 }
