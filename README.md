@@ -1,2 +1,128 @@
 # qountdown
-Count down bar for Quarto RevealJS presentation
+
+A time bar for Quarto RevealJS presentations.
+
+RevealJS already draws a thin progress bar at the bottom of the screen, showing
+how much of the deck you have shown. `qountdown` stacks a second bar of the same
+height right on top of it, in a different accent colour, showing how much of
+your allotted time you have used. Comparing the two tells you at a glance
+whether you are ahead of or behind schedule.
+
+![Both bars: the qountdown bar (orange) above the RevealJS progress bar (blue)](images/qountdown.png)
+
+The clock starts when the presentation goes full screen (`F`), so opening the
+deck to check a slide does not eat into your time.
+
+## Installation
+
+```bash
+quarto add pbosetti/qountdown
+```
+
+This creates an `_extensions/qountdown` directory in your project; check it into
+version control together with the rest of the project.
+
+## Usage
+
+Register the plugin and, optionally, configure it:
+
+```yaml
+---
+title: "My talk"
+format:
+  revealjs:
+    qountdown:
+      minutes: 15
+revealjs-plugins:
+  - qountdown
+---
+```
+
+`revealjs-plugins` is a top level option; everything under `qountdown` goes
+under `format: revealjs:`. With no configuration at all the bar assumes a
+20 minute slot.
+
+## Options
+
+All options live under `format: revealjs: qountdown:`.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `minutes` | `20` | Allocated time. Fractional values are allowed (`0.5` is 30 seconds). |
+| `start` | `fullscreen` | When the clock starts: `fullscreen`, `immediate` (as soon as the deck loads), or `manual` (only via key or API). |
+| `pause-on-exit` | `false` | Pause when leaving full screen, resume when going back in. |
+| `position` | `above` | Put the time bar `above` or `below` the progress bar. |
+| `height` | progress bar height | Height in pixels, if you want it different from the progress bar. |
+| `color` | `#f0a202` | Accent colour while on schedule. |
+| `warning-color` | `#f25c05` | Accent colour past `warning-at`. |
+| `overtime-color` | `#d7263d` | Accent colour once the time is up; the bar also pulses. |
+| `track-color` | `rgba(0, 0, 0, 0.2)` | Colour of the unfilled part. |
+| `warning-at` | `0.8` | Fraction of the allocated time at which the warning colour kicks in. |
+| `label` | `false` | `true` shows the remaining time above the bar, `elapsed` shows the elapsed time instead. |
+| `keys` | `{toggle: t, reset: T}` | Keyboard shortcuts, see below. Use `keys: false` to disable them. |
+
+A fuller example:
+
+```yaml
+format:
+  revealjs:
+    qountdown:
+      minutes: 12
+      warning-at: 0.75
+      color: "#4c9f70"
+      label: true
+      keys:
+        toggle: p
+        reset: P
+revealjs-plugins:
+  - qountdown
+```
+
+## Keyboard
+
+| Key | Action |
+|---|---|
+| `t` | Pause / resume the clock |
+| `T` (shift + `t`) | Reset the clock to zero |
+
+These do not interfere with RevealJS navigation, and are ignored while you are
+typing in an input field. Change them with the `keys` option if they clash with
+another extension (the `pointer` extension, for instance, uses `q` by default).
+
+## Scripting
+
+The plugin exposes a small API, useful for a custom button or for reacting to
+running over time:
+
+```js
+window.Qountdown.start();
+window.Qountdown.pause();
+window.Qountdown.toggle();
+window.Qountdown.reset();
+window.Qountdown.setMinutes(25);
+window.Qountdown.getState();   // {state, elapsed, total} - times in ms
+
+Reveal.on('qountdown-overtime', () => console.log('time is up'));
+Reveal.on('qountdown-state', (e) => console.log(e.data.state));
+```
+
+`Reveal.getPlugin('qountdown').api` gives the same object, per deck.
+
+## Notes
+
+- The bar is not rendered in `?print-pdf` view or when printing.
+- Browser full screen entered with `F11` does not fire the standard full screen
+  event; the plugin also treats a window that fills the whole screen as full
+  screen, which covers `F11` and the macOS green button. If you present in a
+  window, use `start: immediate` or press `t` to start the clock by hand.
+- The bar only appears if the RevealJS progress bar is enabled (`progress: true`,
+  the Quarto default). With `progress: false` the time bar sits at the very
+  bottom of the screen on its own.
+
+## Example
+
+`example.qmd` in this repository is a small deck using the extension:
+
+```bash
+quarto render example.qmd
+```

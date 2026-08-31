@@ -1,0 +1,44 @@
+---
+title: "Qountdown"
+subtitle: "A time bar for Quarto RevealJS"
+author: "Paolo Bosetti"
+format:
+  revealjs:
+    progress: true
+    qountdown:
+      minutes: 15
+      label: true
+revealjs-plugins:
+  - qountdown
+---
+
+## How it works
+
+Two thin bars at the bottom of the screen:
+
+- the built-in **progress bar** — how much of the deck you have shown;
+- the **qountdown bar** just above it — how much of your allotted time you
+  have used.
+
+The clock starts when the presentation goes full screen (press `F`).
+
+## Colours
+
+- accent while on schedule;
+- warning colour after 80% of the time;
+- pulsing red once you run over.
+
+Press `t` to pause or resume, `T` to reset.
+
+## Configuration
+
+```yaml
+format:
+  revealjs:
+    qountdown:
+      minutes: 15
+      start: fullscreen
+      label: true
+```
+
+See the [README](README.md) for the full list of options.
