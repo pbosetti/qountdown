@@ -35,27 +35,33 @@
   50% { opacity: 0.3; }
 }
 
+/* The clock. Corner and offsets are set by the plugin; the modifier classes
+   (--bl, --br, --tr, --tl) are there for your own CSS. */
 .reveal .qountdown-label {
   position: absolute;
-  right: 0.6em;
-  bottom: 100%;
-  margin-bottom: 4px;
-  padding: 1px 6px;
-  border-radius: 3px;
+  z-index: 11;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-family: var(--r-main-font, sans-serif);
-  font-size: 14px;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
   color: #fff;
   background: rgba(0, 0, 0, 0.45);
   opacity: 0.75;
+  pointer-events: none;
 }
 
-.reveal .qountdown.is-overtime .qountdown-label {
+.reveal .qountdown-label.is-paused {
+  opacity: 0.4;
+}
+
+.reveal .qountdown-label.is-overtime {
   background: var(--qountdown-overtime-color, #d7263d);
   opacity: 1;
 }
 
 @media print {
-  .reveal .qountdown { display: none; }
+  .reveal .qountdown,
+  .reveal .qountdown-label { display: none; }
 }

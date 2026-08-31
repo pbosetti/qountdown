@@ -20,8 +20,9 @@ window.RevealQountdown = function () {
     overtimeColor: '#d7263d',// accent past the allocated time
     trackColor: 'rgba(0, 0, 0, 0.2)',
     warningAt: 0.8,          // fraction of the allocated time
-    pauseOnExit: false,      // pause when leaving fullscreen
+    onExit: 'reset',         // on leaving fullscreen: 'reset' | 'pause' | 'continue'
     label: false,            // true | 'remaining' | 'elapsed'
+    labelPosition: 'bl',     // 'bl' | 'br' | 'tr' | 'tl'
     keys: { toggle: 't', reset: 'T' }
   };
 
@@ -45,6 +46,16 @@ window.RevealQountdown = function () {
     var m = Number(minutes);
     if (!isFinite(m) || m <= 0) m = DEFAULTS.minutes;
     return Math.max(0.01, m) * 60000;
+  }
+
+  var CORNERS = {
+    bl: 'bl', br: 'br', tl: 'tl', tr: 'tr',
+    bottomleft: 'bl', bottomright: 'br', topleft: 'tl', topright: 'tr'
+  };
+
+  function corner(value) {
+    var key = String(value == null ? '' : value).toLowerCase().replace(/[^a-z]/g, '');
+    return CORNERS[key] || DEFAULTS.labelPosition;
   }
 
   function pad(n) {
@@ -73,6 +84,10 @@ window.RevealQountdown = function () {
       // Nothing to show on the printed / PDF version of the deck.
       if (/print-pdf/gi.test(window.location.search)) return;
 
+      // Only a fullscreen-triggered clock resets itself on leaving fullscreen.
+      if (raw.onExit === undefined && cfg.start !== 'fullscreen') cfg.onExit = 'continue';
+
+      var labelCorner = corner(cfg.labelPosition);
       var total = minutesToMs(cfg.minutes);
       var warningAt = Number(cfg.warningAt);
       if (!isFinite(warningAt)) warningAt = DEFAULTS.warningAt;
@@ -102,21 +117,42 @@ window.RevealQountdown = function () {
       var label = null;
       if (cfg.label) {
         label = document.createElement('div');
-        label.className = 'qountdown-label';
-        el.appendChild(label);
+        label.className = 'qountdown-label qountdown-label--' + labelCorner;
+        label.setAttribute('aria-hidden', 'true');
+        label.style.setProperty('--qountdown-overtime-color', cfg.overtimeColor);
       }
 
       reveal.appendChild(el);
+      if (label) reveal.appendChild(label);
 
       // --- geometry -------------------------------------------------------
+      var LABEL_INSET = 12; // px from the edge of the deck
+
+      function visible(node) {
+        if (!node) return false;
+        var cs = window.getComputedStyle(node);
+        return cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0';
+      }
+
+      // Width to keep clear so the clock does not sit on top of the menu
+      // button, the slide number or the navigation arrows.
+      function chromeWidth(selectors) {
+        var widest = 0;
+        selectors.forEach(function (selector) {
+          var node = reveal.querySelector(selector) || document.querySelector(selector);
+          if (!visible(node)) return;
+          widest = Math.max(widest, node.getBoundingClientRect().width);
+        });
+        return widest ? widest + 8 : 0;
+      }
+
       // Match the progress bar's height and stack on top of (or under) it.
       function layout() {
         var progress = reveal.querySelector('.progress');
-        var progressHeight = 0;
-        if (progress && window.getComputedStyle(progress).display !== 'none') {
-          progressHeight = progress.getBoundingClientRect().height ||
-            parseFloat(window.getComputedStyle(progress).height) || 0;
-        }
+        var progressHeight = visible(progress)
+          ? (progress.getBoundingClientRect().height ||
+             parseFloat(window.getComputedStyle(progress).height) || 0)
+          : 0;
 
         var height = cfg.height != null
           ? parseFloat(cfg.height)
@@ -131,6 +167,27 @@ window.RevealQountdown = function () {
           el.style.bottom = progressHeight + 'px';
           if (progress) progress.style.bottom = '';
         }
+
+        if (!label) return;
+
+        label.style.top = '';
+        label.style.bottom = '';
+        label.style.left = '';
+        label.style.right = '';
+
+        var inset = LABEL_INSET;
+        if (labelCorner === 'bl') {
+          // Both bars, then a gap, then the clock.
+          label.style.bottom = (height + progressHeight + 6) + 'px';
+          inset += chromeWidth(['.slide-menu-button']);
+        } else if (labelCorner === 'br') {
+          label.style.bottom = (height + progressHeight + 6) + 'px';
+          inset += chromeWidth(['.slide-number', '.controls']);
+        } else {
+          label.style.top = LABEL_INSET + 'px';
+        }
+
+        label.style[labelCorner.charAt(1) === 'l' ? 'left' : 'right'] = inset + 'px';
       }
 
       // --- timing ---------------------------------------------------------
@@ -143,10 +200,15 @@ window.RevealQountdown = function () {
         var fraction = ms / total;
 
         bar.style.width = Math.min(1, fraction) * 100 + '%';
-        el.classList.toggle('is-warning', fraction >= warningAt && fraction < 1);
-        el.classList.toggle('is-overtime', fraction >= 1);
-        el.classList.toggle('is-paused', state === 'paused');
         el.title = formatTime(ms) + ' / ' + formatTime(total);
+
+        [el, label].forEach(function (node) {
+          if (!node) return;
+          node.classList.toggle('is-warning', fraction >= warningAt && fraction < 1);
+          node.classList.toggle('is-overtime', fraction >= 1);
+          node.classList.toggle('is-paused', state === 'paused');
+          node.classList.toggle('is-idle', state === 'idle');
+        });
 
         if (label) {
           label.textContent = cfg.label === 'elapsed'
@@ -204,6 +266,16 @@ window.RevealQountdown = function () {
           render();
           announce();
         },
+        // Back to zero and idle, whatever the clock was doing.
+        stop: function () {
+          banked = 0;
+          startedAt = 0;
+          overtimeAnnounced = false;
+          state = 'idle';
+          tick(false);
+          render();
+          announce();
+        },
         setMinutes: function (minutes) {
           total = minutesToMs(minutes);
           overtimeAnnounced = elapsed() >= total;
@@ -215,29 +287,50 @@ window.RevealQountdown = function () {
       };
 
       // --- triggers -------------------------------------------------------
+      var sawFullscreenApi = false;
+
       function inFullscreen() {
-        if (document.fullscreenElement || document.webkitFullscreenElement) return true;
-        // F11-style browser fullscreen does not set fullscreenElement.
-        return window.screen &&
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          sawFullscreenApi = true;
+          return true;
+        }
+        // F11-style browser fullscreen (and the macOS green button) does not
+        // set fullscreenElement, so fall back to "the window fills the screen".
+        // Once the deck has used the fullscreen API, though, that API is the
+        // authority - otherwise leaving fullscreen would go unnoticed on a
+        // window that happens to be screen sized.
+        if (sawFullscreenApi) return false;
+        return !!window.screen &&
           window.innerHeight >= window.screen.height - 2 &&
           window.innerWidth >= window.screen.width - 2;
       }
 
+      // Only act on actual transitions: the resize listener below fires for
+      // plain window resizes too.
+      var wasFullscreen = false;
+
       function onFullscreenChange() {
-        if (inFullscreen()) {
-          if (state === 'idle' || cfg.pauseOnExit) api.start();
-        } else if (cfg.pauseOnExit) {
+        var now = inFullscreen();
+        if (now === wasFullscreen) return;
+        wasFullscreen = now;
+
+        if (now) {
+          if (cfg.start === 'fullscreen') api.start();
+        } else if (cfg.onExit === 'reset') {
+          api.stop();
+        } else if (cfg.onExit === 'pause') {
           api.pause();
         }
       }
 
-      if (cfg.start === 'immediate') {
-        api.start();
-      } else if (cfg.start === 'fullscreen') {
+      if (cfg.start === 'immediate') api.start();
+
+      if (cfg.start === 'fullscreen' || cfg.onExit !== 'continue') {
         document.addEventListener('fullscreenchange', onFullscreenChange);
         document.addEventListener('webkitfullscreenchange', onFullscreenChange);
         window.addEventListener('resize', onFullscreenChange);
-        if (inFullscreen()) api.start();
+        wasFullscreen = inFullscreen();
+        if (wasFullscreen && cfg.start === 'fullscreen') api.start();
       }
 
       if (cfg.keys.toggle || cfg.keys.reset) {

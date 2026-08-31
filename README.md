@@ -11,7 +11,9 @@ whether you are ahead of or behind schedule.
 ![Both bars: the qountdown bar (orange) above the RevealJS progress bar (blue)](images/qountdown.png)
 
 The clock starts when the presentation goes full screen (`F`), so opening the
-deck to check a slide does not eat into your time.
+deck to check a slide does not eat into your time, and it goes back to zero and
+stops when you leave full screen. An optional clock readout can be shown in any
+of the four corners.
 
 ## Installation
 
@@ -50,7 +52,7 @@ All options live under `format: revealjs: qountdown:`.
 |---|---|---|
 | `minutes` | `20` | Allocated time. Fractional values are allowed (`0.5` is 30 seconds). |
 | `start` | `fullscreen` | When the clock starts: `fullscreen`, `immediate` (as soon as the deck loads), or `manual` (only via key or API). |
-| `pause-on-exit` | `false` | Pause when leaving full screen, resume when going back in. |
+| `on-exit` | `reset` | What happens when you leave full screen: `reset` (back to zero and stopped, so the next full screen starts a fresh clock), `pause` (resume where you left off when you go back in), or `continue` (keep running). |
 | `position` | `above` | Put the time bar `above` or `below` the progress bar. |
 | `height` | progress bar height | Height in pixels, if you want it different from the progress bar. |
 | `color` | `#f0a202` | Accent colour while on schedule. |
@@ -58,7 +60,8 @@ All options live under `format: revealjs: qountdown:`.
 | `overtime-color` | `#d7263d` | Accent colour once the time is up; the bar also pulses. |
 | `track-color` | `rgba(0, 0, 0, 0.2)` | Colour of the unfilled part. |
 | `warning-at` | `0.8` | Fraction of the allocated time at which the warning colour kicks in. |
-| `label` | `false` | `true` shows the remaining time above the bar, `elapsed` shows the elapsed time instead. |
+| `label` | `false` | `true` shows the remaining time, `elapsed` shows the elapsed time instead. |
+| `label-position` | `bl` | Corner for the clock: `bl`, `br`, `tr`, `tl` (`bottom-left` and friends also work). |
 | `keys` | `{toggle: t, reset: T}` | Keyboard shortcuts, see below. Use `keys: false` to disable them. |
 
 A fuller example:
@@ -71,6 +74,7 @@ format:
       warning-at: 0.75
       color: "#4c9f70"
       label: true
+      label-position: tr
       keys:
         toggle: p
         reset: P
@@ -98,12 +102,13 @@ running over time:
 window.Qountdown.start();
 window.Qountdown.pause();
 window.Qountdown.toggle();
-window.Qountdown.reset();
+window.Qountdown.reset();      // back to zero, keeps running if it was running
+window.Qountdown.stop();       // back to zero and idle
 window.Qountdown.setMinutes(25);
 window.Qountdown.getState();   // {state, elapsed, total} - times in ms
 
-Reveal.on('qountdown-overtime', () => console.log('time is up'));
-Reveal.on('qountdown-state', (e) => console.log(e.data.state));
+Reveal.on('qountdown-overtime', (e) => console.log('time is up', e.elapsed));
+Reveal.on('qountdown-state', (e) => console.log(e.state, e.elapsed, e.total));
 ```
 
 `Reveal.getPlugin('qountdown').api` gives the same object, per deck.
@@ -113,8 +118,12 @@ Reveal.on('qountdown-state', (e) => console.log(e.data.state));
 - The bar is not rendered in `?print-pdf` view or when printing.
 - Browser full screen entered with `F11` does not fire the standard full screen
   event; the plugin also treats a window that fills the whole screen as full
-  screen, which covers `F11` and the macOS green button. If you present in a
+  screen, which covers `F11` and the macOS green button. Once the deck has been
+  put in full screen with `F`, the full screen API becomes the authority, so
+  that leaving it is noticed even on a screen sized window. If you present in a
   window, use `start: immediate` or press `t` to start the clock by hand.
+- The clock keeps clear of the menu button, the slide number and the navigation
+  arrows when it shares a corner with them.
 - The bar only appears if the RevealJS progress bar is enabled (`progress: true`,
   the Quarto default). With `progress: false` the time bar sits at the very
   bottom of the screen on its own.

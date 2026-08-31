@@ -8,6 +8,7 @@ format:
     qountdown:
       minutes: 15
       label: true
+      label-position: bl
 revealjs-plugins:
   - qountdown
 ---
@@ -20,7 +21,8 @@ Two thin bars at the bottom of the screen:
 - the **qountdown bar** just above it — how much of your allotted time you
   have used.
 
-The clock starts when the presentation goes full screen (press `F`).
+The clock starts when the presentation goes full screen (press `F`), and goes
+back to zero when you leave full screen.
 
 ## Colours
 
@@ -39,6 +41,7 @@ format:
       minutes: 15
       start: fullscreen
       label: true
+      label-position: bl   # bl, br, tr, tl
 ```
 
 See the [README](README.md) for the full list of options.
