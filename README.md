@@ -17,6 +17,14 @@ of the four corners.
 
 ## Installation
 
+Until not officially supported:
+
+```bash
+quarto add https://github.com/pbosetti/qountdown/archive/refs/heads/main.zip
+```
+
+When it will be officially available:
+
 ```bash
 quarto add pbosetti/qountdown
 ```
